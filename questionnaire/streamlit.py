@@ -18,14 +18,14 @@ def main():
 
     # The Generate button
     if st.button("Generate"):
-        response = send_to_model(
+        user_input = {
             "Q1": q1,
             "Q2": q2,
             "Q3": q3,
             "Q4": q4,
             "Q5": q5,
             "Q6": q6
-        )
+        }
 
         st.write("### Your response:")
         for key, value in user_input.items():
