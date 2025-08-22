@@ -1,12 +1,20 @@
+import os
 import streamlit as st
 from openai import OpenAI
 from dotenv import load_dotenv
+
+from docx import Document
+
 load_dotenv() # Import environment variables from .env
 #import os
 #os.environ["http_proxy"] = "http://127.0.0.1:1083"
 #os.environ["https_proxy"] = "http://127.0.0.1:1083"
 
 client = OpenAI()
+
+# Access the file paths from the environment variables
+file_in_docx = os.getenv("FILE_IN_DOCX")
+file_out_docx = os.getenv("FILE_OUT_DOCX")
 
 def main():
     st.title("LLM Learning Background Questionnaire")
@@ -41,6 +49,9 @@ def main():
 
         # Here you can add logic to send the responses to an LLM API
         result = get_completion(str(user_input))
+        file_in_docx = ""
+        file_out_docx = ""
+        replace_text_in_docx(file_in_docx, "[[replace]]", result, file_out_docx)
         st.success(result)
 
 def get_completion(user_input, model="gpt-4o", temperature=0):
@@ -110,6 +121,13 @@ def get_completion(user_input, model="gpt-4o", temperature=0):
         temperature=temperature
     )
     return response.choices[0].message.content
+
+def replace_text_in_docx(doc_path, old_text, new_text, output_path):
+    doc = Document(doc_path)
+    for para in doc.paragraphs:
+        if old_text in para.text:
+            para.text = para.text.replace(old_text, new_text)
+    doc.save(output_path)
 
 if __name__ == "__main__":
     main()
