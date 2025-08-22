@@ -2,12 +2,20 @@ import streamlit as st
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+import pymysql
+import json
 
 load_dotenv()
 #os.environ["http_proxy"] = "http://127.0.0.1:1083"
 #os.environ["https_proxy"] = "http://127.0.0.1:1083"
 
 client = OpenAI()
+
+# Access the Database configuration from the environment variables
+host = os.getenv("HOST")
+user = os.getenv("USER")
+password = os.getenv("PASSWORD")
+database = os.getenv("DATABASE")
 
 def get_completion(table_schema, sql_requirements, model="gpt-4o", temperature=0):
     instruction = """
@@ -66,17 +74,39 @@ def get_completion(table_schema, sql_requirements, model="gpt-4o", temperature=0
     )
     return response.choices[0].message.content
 
+def get_all_create_table_statements(host, user, password, database):
+    try:
+        # Connect to MySQL Database
+        conn = pymysql.connect(host=host, user=user, password=password, database=database)
+        cursor = conn.cursor()
+
+        # Get all tables from database
+        cursor.execute("SHOW TABLES;")
+        tables = cursor.fetchall()
+
+        create_statements = []
+
+        # Iterate all tables and get table creation statements
+        for table in tables:
+            table_name = table[0]
+            cursor.execute(f"SHOW CREATE TABLE `{table_name}`;")
+            create_statement = cursor.fetchone()[1]
+            create_statements.append(create_statement)
+
+        # Close the cursor and the database connection
+        cursor.close()
+        conn.close()
+
+        return json.dumps(create_statements, indent=4, ensure_ascii=False)
+
+    except pymysql.MySQLError as e:
+        print(f"Database error: {e}")
+        return None
+
 st.title("💡 SQL Schema Design Assistant")
 
-# user input number of tables
-num_tables = st.number_input("Please input the number of tables: ", min_value=1, max_value=10, step=1, value=1)
-
 # Generate dynamic table schema input box
-table_definitions = []
-st.subheader("📝 Please input the table schema(SQL/DDL statement)")
-for i in range(num_tables):
-  table_def = st.text_area(f"Table {i+1} Schema(SQL/DDL statement): ", height=150)
-  table_definitions.append(table_def)
+table_definitions = get_all_create_table_statements(host, user, password, database)
 
 # user input SQL/DDL statement
 st.subheader("📋 Please input your requirements for the SQL query")
